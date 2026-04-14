@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SairAI — Real-Time Traffic Intelligence</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --navy: #0a1628;
+            --navy-light: #132240;
+            --navy-card: #1a2d4d;
+            --accent-green: #00c853;
+            --accent-red: #ff1744;
+            --accent-orange: #ff9100;
+            --accent-blue: #448aff;
+            --accent-jordan-red: #ce1126;
+            --accent-jordan-green: #007a3d;
+            --text-primary: #e8eaf6;
+            --text-secondary: #90a4ae;
+            --text-muted: #546e7a;
+            --border: #263859;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--navy);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+        .header {
+            background: linear-gradient(135deg, var(--navy-light) 0%, #0d1f3c 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-jordan-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .tagline { font-size: 13px; color: var(--text-secondary); }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.idle { background: rgba(84,110,122,0.3); color: var(--text-secondary); }
+        .status-badge.live { background: rgba(0,200,83,0.15); color: var(--accent-green); }
+        .status-badge .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: currentColor;
+        }
+        .status-badge.live .dot { animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto 1fr;
+            gap: 16px;
+            padding: 16px;
+            flex: 1;
+        }
+
+        .metrics-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+
+        .metric-card {
+            background: var(--navy-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .metric-value { font-size: 32px; font-weight: 800; line-height: 1.1; }
+        .metric-sub { font-size: 12px; color: var(--text-secondary); }
+
+        .metric-card.green .metric-value { color: var(--accent-green); }
+        .metric-card.blue .metric-value { color: var(--accent-blue); }
+        .metric-card.orange .metric-value { color: var(--accent-orange); }
+        .metric-card.red .metric-value { color: var(--accent-red); }
+
+        .video-panel {
+            background: var(--navy-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-panel .video-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .video-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px;
+        }
+
+        .video-placeholder h3 { margin-bottom: 8px; font-size: 16px; }
+        .video-placeholder p { font-size: 13px; }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .panel-card {
+            background: var(--navy-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .panel-card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-card-body { padding: 16px; }
+
+        .breakdown-list { list-style: none; }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 13px;
+        }
+
+        .breakdown-item:last-child { border-bottom: none; }
+        .breakdown-count { font-weight: 700; color: var(--accent-blue); }
+
+        .violation-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            margin-bottom: 6px;
+            background: rgba(255,23,68,0.08);
+            border: 1px solid rgba(255,23,68,0.2);
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .violation-icon {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px; font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .chart-container {
+            grid-column: 1 / -1;
+            background: var(--navy-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .chart-container h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+        canvas { width: 100% !important; }
+
+        .footer {
+            text-align: center;
+            padding: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+        }
+
+        /* Lane cards */
+        .lane-card {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid;
+            transition: all 0.3s;
+        }
+        .lane-card.clear {
+            background: rgba(0,200,83,0.08);
+            border-color: rgba(0,200,83,0.25);
+        }
+        .lane-card.congested {
+            background: rgba(255,23,68,0.08);
+            border-color: rgba(255,23,68,0.25);
+        }
+        .lane-card .lane-name {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .lane-card .lane-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .lane-card .lane-stats span { display: flex; justify-content: space-between; }
+        .lane-card .lane-stats .val { font-weight: 700; color: var(--text-primary); }
+        .congestion-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .congestion-badge.clear { background: rgba(0,200,83,0.2); color: var(--accent-green); }
+        .congestion-badge.congested { background: rgba(255,23,68,0.2); color: var(--accent-red); }
+
+        /* Tab buttons */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            padding: 8px 16px;
+            background: var(--navy-light);
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+        .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.05); }
+
+        /* Annotator */
+        .annotator-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .annotator-toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .annotator-toolbar label { font-size: 13px; color: var(--text-secondary); }
+        .annotator-toolbar input, .annotator-toolbar select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--navy-card);
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        .annotator-toolbar button {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--accent-blue); color: white; }
+        .btn-danger { background: var(--accent-red); color: white; }
+        .btn-success { background: var(--accent-green); color: white; }
+        .btn-secondary { background: var(--navy-card); color: var(--text-primary); border: 1px solid var(--border) !important; }
+        .annotator-canvas-wrap {
+            position: relative;
+            display: inline-block;
+            max-width: 90vw;
+            max-height: 70vh;
+        }
+        .annotator-canvas-wrap canvas {
+            max-width: 90vw;
+            max-height: 70vh;
+            cursor: crosshair;
+        }
+        .lane-list-sidebar {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .lane-chip {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .lane-chip.inbound { background: rgba(68,138,255,0.2); color: var(--accent-blue); }
+        .lane-chip.outbound { background: rgba(255,145,0,0.2); color: var(--accent-orange); }
+        .lane-chip .remove-lane {
+            cursor: pointer;
+            opacity: 0.6;
+            font-size: 14px;
+        }
+        .lane-chip .remove-lane:hover { opacity: 1; }
+
+        @media (max-width: 900px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        function MetricCard({ label, value, sub, color = "blue" }) {
+            return (
+                <div className={`metric-card ${color}`}>
+                    <span className="metric-label">{label}</span>
+                    <span className="metric-value">{value}</span>
+                    {sub && <span className="metric-sub">{sub}</span>}
+                </div>
+            );
+        }
+
+        function TimeSeriesChart({ history }) {
+            const canvasRef = useRef(null);
+            const chartRef = useRef(null);
+
+            useEffect(() => {
+                if (!canvasRef.current) return;
+                if (chartRef.current) chartRef.current.destroy();
+
+                const labels = history.map((_, i) => i);
+                const ctx = canvasRef.current.getContext("2d");
+
+                chartRef.current = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: "Vehicles",
+                                data: history.map(h => h.total_vehicles),
+                                borderColor: "#448aff",
+                                backgroundColor: "rgba(68,138,255,0.1)",
+                                fill: true, tension: 0.4, pointRadius: 0,
+                            },
+                            {
+                                label: "Avg Speed (km/h)",
+                                data: history.map(h => h.avg_speed_kph),
+                                borderColor: "#00c853",
+                                backgroundColor: "rgba(0,200,83,0.1)",
+                                fill: false, tension: 0.4, pointRadius: 0,
+                                yAxisID: "y1",
+                            },
+                            {
+                                label: "Queue",
+                                data: history.map(h => h.queue_vehicles),
+                                borderColor: "#ff1744",
+                                backgroundColor: "rgba(255,23,68,0.1)",
+                                fill: true, tension: 0.4, pointRadius: 0,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        interaction: { mode: "index", intersect: false },
+                        plugins: {
+                            legend: { labels: { color: "#90a4ae", font: { size: 11 } } },
+                        },
+                        scales: {
+                            x: { display: false },
+                            y: {
+                                position: "left",
+                                grid: { color: "rgba(255,255,255,0.05)" },
+                                ticks: { color: "#546e7a", font: { size: 10 } },
+                            },
+                            y1: {
+                                position: "right",
+                                grid: { display: false },
+                                ticks: { color: "#546e7a", font: { size: 10 } },
+                            },
+                        },
+                    },
+                });
+
+                return () => { if (chartRef.current) chartRef.current.destroy(); };
+            }, [history]);
+
+            return (
+                <div style={{ height: "200px" }}>
+                    <canvas ref={canvasRef} />
+                </div>
+            );
+        }
+
+        /* ─── Lane Annotation Modal ─────────────────────────── */
+        function LaneAnnotator({ videoName, existingLanes, onSave, onClose }) {
+            const canvasRef = useRef(null);
+            const imgRef = useRef(null);
+            const [imgLoaded, setImgLoaded] = useState(false);
+            const [lanes, setLanes] = useState(existingLanes || []);
+            const [currentPoly, setCurrentPoly] = useState([]);
+            const [laneLabel, setLaneLabel] = useState("");
+            const [laneDirection, setLaneDirection] = useState("inbound");
+            const [saving, setSaving] = useState(false);
+
+            useEffect(() => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => { imgRef.current = img; setImgLoaded(true); };
+                img.src = `/api/preview/${videoName}`;
+            }, [videoName]);
+
+            const redraw = useCallback(() => {
+                const canvas = canvasRef.current;
+                const img = imgRef.current;
+                if (!canvas || !img) return;
+                const ctx = canvas.getContext("2d");
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.drawImage(img, 0, 0);
+
+                lanes.forEach(lane => {
+                    const pts = lane.polygon;
+                    if (pts.length < 2) return;
+                    ctx.beginPath();
+                    ctx.moveTo(pts[0][0], pts[0][1]);
+                    pts.slice(1).forEach(p => ctx.lineTo(p[0], p[1]));
+                    ctx.closePath();
+                    ctx.fillStyle = lane.direction === "inbound"
+                        ? "rgba(68,138,255,0.2)" : "rgba(255,145,0,0.2)";
+                    ctx.fill();
+                    ctx.strokeStyle = lane.direction === "inbound" ? "#448aff" : "#ff9100";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+                    const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+                    ctx.font = "bold 14px sans-serif";
+                    ctx.fillStyle = "white";
+                    ctx.textAlign = "center";
+                    ctx.fillText(lane.label || lane.id, cx, cy);
+                });
+
+                if (currentPoly.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(currentPoly[0][0], currentPoly[0][1]);
+                    currentPoly.slice(1).forEach(p => ctx.lineTo(p[0], p[1]));
+                    ctx.strokeStyle = "#fff";
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    currentPoly.forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
+                        ctx.fillStyle = "#00c853";
+                        ctx.fill();
+                    });
+                }
+            }, [lanes, currentPoly, imgLoaded]);
+
+            useEffect(() => { redraw(); }, [redraw]);
+
+            const handleCanvasClick = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = Math.round((e.clientX - rect.left) * scaleX);
+                const y = Math.round((e.clientY - rect.top) * scaleY);
+                setCurrentPoly(prev => [...prev, [x, y]]);
+            };
+
+            const finishLane = () => {
+                if (currentPoly.length < 3) return;
+                const id = laneLabel.toLowerCase().replace(/\s+/g, "_") || `lane_${lanes.length + 1}`;
+                const newLane = {
+                    id,
+                    label: laneLabel || `Lane ${lanes.length + 1}`,
+                    direction: laneDirection,
+                    polygon: currentPoly,
+                };
+                setLanes(prev => [...prev, newLane]);
+                setCurrentPoly([]);
+                setLaneLabel("");
+            };
+
+            const removeLane = (id) => {
+                setLanes(prev => prev.filter(l => l.id !== id));
+            };
+
+            const handleSave = async () => {
+                setSaving(true);
+                try {
+                    const resp = await fetch(`/api/lanes/${videoName}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lanes }),
+                    });
+                    if (resp.ok) {
+                        onSave(lanes);
+                    }
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            return (
+                <div className="annotator-overlay">
+                    <div className="annotator-toolbar">
+                        <label>Label:</label>
+                        <input value={laneLabel} onChange={e => setLaneLabel(e.target.value)}
+                               placeholder="e.g. Inbound Lane 1" style={{ width: 180 }} />
+                        <label>Direction:</label>
+                        <select value={laneDirection} onChange={e => setLaneDirection(e.target.value)}>
+                            <option value="inbound">Inbound</option>
+                            <option value="outbound">Outbound</option>
+                        </select>
+                        <button className="btn-primary" onClick={finishLane}
+                                disabled={currentPoly.length < 3}>
+                            Finish Lane ({currentPoly.length} pts)
+                        </button>
+                        <button className="btn-secondary" onClick={() => setCurrentPoly([])}>
+                            Clear Points
+                        </button>
+                        <button className="btn-success" onClick={handleSave} disabled={saving}>
+                            {saving ? "Saving..." : `Save ${lanes.length} Lane(s)`}
+                        </button>
+                        <button className="btn-danger" onClick={onClose}>Close</button>
+                    </div>
+                    <div className="annotator-canvas-wrap">
+                        {imgLoaded ? (
+                            <canvas ref={canvasRef} onClick={handleCanvasClick} />
+                        ) : (
+                            <div className="video-placeholder">
+                                <h3>Loading preview frame...</h3>
+                            </div>
+                        )}
+                    </div>
+                    <div className="lane-list-sidebar">
+                        {lanes.map(l => (
+                            <div key={l.id} className={`lane-chip ${l.direction}`}>
+                                {l.label}
+                                <span className="remove-lane" onClick={() => removeLane(l.id)}>x</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        /* ─── Lane Status Card ──────────────────────────────── */
+        function LaneCard({ lane }) {
+            const status = lane.is_congested ? "congested" : "clear";
+            return (
+                <div className={`lane-card ${status}`}>
+                    <div className="lane-name">
+                        <span>{lane.label}</span>
+                        <span className={`congestion-badge ${status}`}>
+                            {lane.is_congested ? "Congested" : "Clear"}
+                        </span>
+                    </div>
+                    <div className="lane-stats">
+                        <span>Vehicles <span className="val">{lane.vehicle_count}</span></span>
+                        <span>Avg Speed <span className="val">{lane.avg_speed_kph} km/h</span></span>
+                        <span>P85 Speed <span className="val">{lane.p85_speed_kph} km/h</span></span>
+                        <span>Queued <span className="val">{lane.queue_vehicles}</span></span>
+                        <span>Density <span className="val">{(lane.congestion_ratio * 100).toFixed(1)}%</span></span>
+                        <span>Direction <span className="val" style={{textTransform:"capitalize"}}>{lane.direction}</span></span>
+                    </div>
+                </div>
+            );
+        }
+
+        /* ─── Main App ──────────────────────────────────────── */
+        const VIDEO_SOURCE = "video6.mp4";
+
+        function App() {
+            const [ws, setWs] = useState(null);
+            const [connected, setConnected] = useState(false);
+            const [processing, setProcessing] = useState(false);
+            const [currentFrame, setCurrentFrame] = useState(null);
+            const [metrics, setMetrics] = useState(null);
+            const [history, setHistory] = useState([]);
+            const [frameCount, setFrameCount] = useState(0);
+            const [error, setError] = useState(null);
+            const [showAnnotator, setShowAnnotator] = useState(false);
+            const [savedLanes, setSavedLanes] = useState([]);
+
+            const historyRef = useRef([]);
+            const wsRef = useRef(null);
+            const startedRef = useRef(false);
+            const MAX_HISTORY = 200;
+
+            useEffect(() => {
+                fetch(`/api/lanes/${VIDEO_SOURCE}`)
+                    .then(r => r.json())
+                    .then(d => setSavedLanes(d.lanes || []))
+                    .catch(() => {});
+            }, []);
+
+            const startProcessing = useCallback((socket) => {
+                if (startedRef.current) return;
+                startedRef.current = true;
+                setProcessing(true);
+                setFrameCount(0);
+                historyRef.current = [];
+                setHistory([]);
+                socket.send(JSON.stringify({
+                    action: "start",
+                    video: VIDEO_SOURCE,
+                    skip_frames: 0,
+                }));
+            }, []);
+
+            const connectWS = useCallback(() => {
+                const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+                const wsUrl = `${protocol}//${window.location.host}/ws/stream`;
+                const socket = new WebSocket(wsUrl);
+
+                socket.onopen = () => {
+                    setConnected(true);
+                    setError(null);
+                    startProcessing(socket);
+                };
+
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.status === "processing_started" && data.lanes) {
+                        setSavedLanes(data.lanes);
+                    }
+                    if (data.type === "frame") {
+                        setCurrentFrame(`data:image/jpeg;base64,${data.frame}`);
+                        setMetrics(data.metrics);
+                        setFrameCount(prev => prev + 1);
+
+                        historyRef.current = [
+                            ...historyRef.current.slice(-MAX_HISTORY + 1),
+                            data.metrics,
+                        ];
+                        if (historyRef.current.length % 5 === 0) {
+                            setHistory([...historyRef.current]);
+                        }
+                    } else if (data.status === "processing_complete") {
+                        setProcessing(false);
+                        setHistory([...historyRef.current]);
+                    } else if (data.error) {
+                        setError(data.error);
+                        setProcessing(false);
+                    }
+                };
+
+                socket.onclose = () => {
+                    setConnected(false);
+                    startedRef.current = false;
+                    setTimeout(connectWS, 3000);
+                };
+
+                socket.onerror = () => setError("WebSocket connection error");
+
+                wsRef.current = socket;
+                setWs(socket);
+            }, [startProcessing]);
+
+            useEffect(() => {
+                connectWS();
+                return () => wsRef.current && wsRef.current.close();
+            }, []);
+
+            const m = metrics || {};
+            const breakdown = m.breakdown || {};
+            const lanes = m.lanes || {};
+            const laneList = Object.values(lanes);
+
+            return (
+                <div className="app">
+                    <header className="header">
+                        <div className="header-left">
+                            <span className="logo">SairAI</span>
+                            <span className="tagline">Real-Time Drone Traffic Intelligence for Amman</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <button className="btn-secondary" style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, cursor: "pointer" }}
+                                    onClick={() => setShowAnnotator(true)}>
+                                Annotate Lanes
+                            </button>
+                            <span className={`status-badge ${processing ? "live" : "idle"}`}>
+                                <span className="dot" />
+                                {processing ? "LIVE" : connected ? "READY" : "OFFLINE"}
+                            </span>
+                            {frameCount > 0 && (
+                                <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                                    Frame {frameCount}
+                                </span>
+                            )}
+                        </div>
+                    </header>
+
+                    {error && (
+                        <div style={{
+                            background: "rgba(255,23,68,0.1)",
+                            borderBottom: "1px solid rgba(255,23,68,0.3)",
+                            padding: "8px 24px", fontSize: "13px",
+                            color: "var(--accent-red)",
+                        }}>
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="main-content">
+                        <div className="metrics-row">
+                            <MetricCard
+                                label="Total Vehicles"
+                                value={m.total_vehicles || 0}
+                                sub={`${breakdown.cars || 0} cars, ${breakdown.trucks || 0} trucks`}
+                                color="blue"
+                            />
+                            <MetricCard
+                                label="Avg Speed"
+                                value={`${(m.avg_speed_kph || 0).toFixed(1)}`}
+                                sub="km/h (all lanes)"
+                                color="green"
+                            />
+                            <MetricCard
+                                label="85th % Speed"
+                                value={`${(m.p85_speed_kph || 0).toFixed(1)}`}
+                                sub="km/h"
+                                color="green"
+                            />
+                            <MetricCard
+                                label="Queued"
+                                value={m.queue_vehicles || 0}
+                                sub="stationary vehicles"
+                                color={m.queue_vehicles > 5 ? "red" : "orange"}
+                            />
+                            <MetricCard
+                                label="Flow Rate"
+                                value={`${(m.flow_rate_vpm || 0).toFixed(1)}`}
+                                sub="vehicles/min"
+                                color="blue"
+                            />
+                            <MetricCard
+                                label="Violations"
+                                value={(m.violations || []).length}
+                                sub="detected"
+                                color={(m.violations || []).length > 0 ? "red" : "green"}
+                            />
+                        </div>
+
+                        <div className="video-panel">
+                            <div className="video-header">
+                                <span>Live Detection Feed</span>
+                                <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                                    {VIDEO_SOURCE}
+                                    {laneList.length > 0 && ` — ${laneList.length} lane(s)`}
+                                </span>
+                            </div>
+                            <div className="video-container">
+                                {currentFrame ? (
+                                    <img src={currentFrame} alt="Detection feed" />
+                                ) : (
+                                    <div className="video-placeholder">
+                                        <h3>Connecting...</h3>
+                                        <p>Waiting for video processing to begin.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="side-panel">
+                            {/* Lane Status */}
+                            {laneList.length > 0 && (
+                                <div className="panel-card">
+                                    <div className="panel-card-header">
+                                        <span>Lane Status</span>
+                                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                                            {laneList.filter(l => l.is_congested).length}/{laneList.length} congested
+                                        </span>
+                                    </div>
+                                    <div className="panel-card-body">
+                                        {laneList.map(l => <LaneCard key={l.lane_id} lane={l} />)}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Vehicle Breakdown */}
+                            <div className="panel-card">
+                                <div className="panel-card-header">Vehicle Breakdown</div>
+                                <div className="panel-card-body">
+                                    <ul className="breakdown-list">
+                                        <li className="breakdown-item">
+                                            <span>Cars</span>
+                                            <span className="breakdown-count">{breakdown.cars || 0}</span>
+                                        </li>
+                                        <li className="breakdown-item">
+                                            <span>Trucks</span>
+                                            <span className="breakdown-count">{breakdown.trucks || 0}</span>
+                                        </li>
+                                        <li className="breakdown-item">
+                                            <span>Buses</span>
+                                            <span className="breakdown-count">{breakdown.buses || 0}</span>
+                                        </li>
+                                        <li className="breakdown-item">
+                                            <span>Motorcycles</span>
+                                            <span className="breakdown-count">{breakdown.motorcycles || 0}</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {/* Violations */}
+                            <div className="panel-card">
+                                <div className="panel-card-header">Violations</div>
+                                <div className="panel-card-body">
+                                    {(m.violations || []).length === 0 ? (
+                                        <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                                            No violations detected
+                                        </p>
+                                    ) : (
+                                        (m.violations || []).map((v, i) => (
+                                            <div key={i} className="violation-item">
+                                                <div className="violation-icon">!</div>
+                                                <div>
+                                                    <strong>{v.type.replace(/_/g, " ").toUpperCase()}</strong>
+                                                    <br />
+                                                    <span style={{ color: "var(--text-secondary)" }}>
+                                                        Vehicle #{v.vehicle_id} ({v.class})
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {history.length > 5 && (
+                            <div className="chart-container">
+                                <h4>Metrics Over Time</h4>
+                                <TimeSeriesChart history={history} />
+                            </div>
+                        )}
+                    </div>
+
+                    <footer className="footer">
+                        SairAI v1.0 — Drone-Based Real-Time Traffic Intelligence for Amman
+                        &nbsp;|&nbsp; Built by Anoud &nbsp;|&nbsp; Robotics &amp; Drones Pillar
+                    </footer>
+
+                    {showAnnotator && (
+                        <LaneAnnotator
+                            videoName={VIDEO_SOURCE}
+                            existingLanes={savedLanes}
+                            onSave={(lanes) => {
+                                setSavedLanes(lanes);
+                                setShowAnnotator(false);
+                            }}
+                            onClose={() => setShowAnnotator(false)}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+</html>

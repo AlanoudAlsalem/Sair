@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════
+# SairAI — Python Dependencies
+# ═══════════════════════════════════════════════════════
+# Install with:  pip install -r requirements.txt
+# ═══════════════════════════════════════════════════════
+
+# ── Core AI / Computer Vision ─────────────────────────
+ultralytics>=8.0.0          # YOLOv8 object detection
+supervision>=0.18.0         # ByteTrack tracker + annotation helpers
+sahi>=0.11.0                # Sliced inference for small-object detection in drone footage
+opencv-python>=4.8.0        # Video I/O and image processing
+numpy>=1.24.0               # Numerical computing
+torch>=2.0.0                # PyTorch (backend for YOLOv8)
+
+# ── Web Server / API ─────────────────────────────────
+fastapi>=0.100.0            # REST API + WebSocket server
+uvicorn[standard]>=0.22.0   # ASGI server to run FastAPI
+python-multipart>=0.0.6     # File upload support
+aiofiles>=23.0              # Async file serving
+websockets>=11.0            # WebSocket protocol support
+
+# ── Data Processing ───────────────────────────────────
+pandas>=2.0.0               # Data manipulation and CSV export
+scipy>=1.10.0               # Statistical functions (optional)
+
+# ── Utilities ─────────────────────────────────────────
+Pillow>=9.5.0               # Image manipulation
