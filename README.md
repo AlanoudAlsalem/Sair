@@ -1,9 +1,6 @@
-# SairAI — Drone-Based Real-Time Traffic Intelligence for Amman
+# Sair: Drone-Based Real-Time Traffic Intelligence for Amman
 
 A tethered drone + AI vision system that gives Amman traffic authorities a bird's-eye, multi-lane, real-time view of congested intersections at roughly **one-tenth the cost** of fixed-camera instrumentation.
-
-**Pillar:** Robotics & Drones (with AI/ML integration)
-**Author:** Anoud
 
 ---
 
@@ -153,8 +150,5 @@ See [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) for a comprehensive, beginn
 
 ## License
 
-This project was created for educational and competition purposes.
+This project was created for educational purposes.
 
----
-
-*Built for the Robotics & Drones pillar by Anoud, April 2026*
